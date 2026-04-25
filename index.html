@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Aiden's Math Games</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Game navigation">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">A</div>
+          <div>
+            <h1>Aiden's Math Games</h1>
+            <p>Play, predict, explain.</p>
+          </div>
+        </div>
+
+        <nav class="game-nav" id="gameNav"></nav>
+
+        <section class="reward-card">
+          <h2>Reward Shelf</h2>
+          <p id="rewardText">Earn sparks to unlock trickier versions.</p>
+          <div class="badge-row" id="badgeRow" aria-label="Earned badges"></div>
+        </section>
+
+        <section class="parent-card">
+          <h2>Parent Lens</h2>
+          <p id="parentLens">Pick a game and ask Aiden what he thinks will happen before pressing the button.</p>
+        </section>
+      </aside>
+
+      <main class="game-stage">
+        <header class="stage-header">
+          <div>
+            <p class="eyebrow" id="gameTopic">Number sense</p>
+            <h2 id="gameTitle">Make Ten Trail</h2>
+          </div>
+          <div class="score-strip" aria-label="Session stats">
+            <div>
+              <span id="levelCount">1</span>
+              <small>level</small>
+            </div>
+            <div>
+              <span id="roundCount">0</span>
+              <small>rounds</small>
+            </div>
+            <div>
+              <span id="sparkCount">0</span>
+              <small>sparks</small>
+            </div>
+            <div>
+              <span id="winCount">0</span>
+              <small>wins</small>
+            </div>
+          </div>
+        </header>
+
+        <section class="activity-panel" id="activityPanel" aria-live="polite"></section>
+
+        <section class="notebook">
+          <div>
+            <h3>Math Talk</h3>
+            <p id="mathTalk">What pairs make 10? Which pairs are easiest to remember?</p>
+          </div>
+          <div>
+            <h3>Code Talk</h3>
+            <p id="codeTalk">A program can check every pair by using a loop and an if statement.</p>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
