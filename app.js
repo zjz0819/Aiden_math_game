@@ -4,8 +4,6 @@ const state = {
   activeGame: "make-ten",
   progress: loadProgress(),
   selectedNumbers: [],
-  currentShape: "square",
-  placedShapes: [],
   robotProgram: [],
   robotPosition: 20,
   pebble: null,
@@ -28,13 +26,13 @@ const games = [
   {
     id: "shape-shop",
     title: "Shape Workshop",
-    short: "Combine simple shapes",
+    short: "Shape definitions",
     topic: "Geometry",
     icon: "[]",
     parent:
-      "Build a picture together, then ask which pieces could be swapped without changing the overall idea.",
-    mathTalk: "What shapes did you use? Which shapes have corners, curves, or equal sides?",
-    codeTalk: "This is like sprites in Scratch: choose an object, set its position, then draw it.",
+      "Ask Aiden to name the properties before choosing. For example: a square is a rectangle and a rhombus, but a rectangle is not always a rhombus.",
+    mathTalk: "Shapes can belong to more than one family. A square has 4 equal sides and 4 right angles, so it is both a rectangle and a rhombus.",
+    codeTalk: "A program can classify a shape by checking properties like sides, equal sides, parallel sides, and right angles.",
     render: renderShapeShop
   },
   {
@@ -535,77 +533,231 @@ function renderFactFamily(problem = makeFactFamilyProblem(), message = "Use the 
   });
 }
 
-function renderShapeShop(message = "Pick a shape, then place it on the board.") {
+const geometryShapes = [
+  {
+    id: "circle",
+    name: "Circle",
+    minLevel: 1,
+    definition: "A round shape with no corners and no straight sides.",
+    properties: ["0 sides", "0 corners", "curved edge"],
+    trueFacts: ["A circle has no corners.", "A circle does not have straight sides."],
+    falseFacts: ["A circle is a polygon.", "A circle has 4 sides."]
+  },
+  {
+    id: "triangle",
+    name: "Triangle",
+    minLevel: 1,
+    definition: "A polygon with exactly 3 sides and 3 corners.",
+    properties: ["3 sides", "3 corners", "polygon"],
+    trueFacts: ["Every triangle has 3 sides.", "A triangle is a polygon."],
+    falseFacts: ["Every triangle has 4 sides.", "A triangle must have a right angle."]
+  },
+  {
+    id: "square",
+    name: "Square",
+    minLevel: 1,
+    definition: "A quadrilateral with 4 equal sides and 4 right angles.",
+    properties: ["4 sides", "4 equal sides", "4 right angles", "2 pairs of parallel sides", "rectangle", "rhombus"],
+    trueFacts: ["Every square is a rectangle.", "Every square is a rhombus.", "A square has 4 equal sides."],
+    falseFacts: ["A square has only 3 corners.", "A square is never a rectangle."]
+  },
+  {
+    id: "rectangle",
+    name: "Rectangle",
+    minLevel: 1,
+    definition: "A quadrilateral with 4 right angles.",
+    properties: ["4 sides", "4 right angles", "opposite sides equal", "2 pairs of parallel sides", "parallelogram"],
+    trueFacts: ["Every rectangle has 4 right angles.", "A square is a special rectangle.", "A rectangle is a parallelogram."],
+    falseFacts: ["Every rectangle is a rhombus.", "A rectangle must have 4 equal sides."]
+  },
+  {
+    id: "rhombus",
+    name: "Rhombus",
+    minLevel: 2,
+    definition: "A quadrilateral with 4 equal sides. Its opposite sides are parallel.",
+    properties: ["4 sides", "4 equal sides", "2 pairs of parallel sides", "parallelogram"],
+    trueFacts: ["Every rhombus has 4 equal sides.", "A square is a special rhombus.", "A diamond shape can be a rhombus when all 4 sides are equal.", "A rhombus is a parallelogram."],
+    falseFacts: ["Every rhombus has 4 right angles.", "Every rectangle is a rhombus."]
+  },
+  {
+    id: "pentagon",
+    name: "Pentagon",
+    minLevel: 2,
+    definition: "A polygon with exactly 5 sides and 5 corners.",
+    properties: ["5 sides", "5 corners", "polygon"],
+    trueFacts: ["Every pentagon has 5 sides.", "A pentagon is a polygon."],
+    falseFacts: ["A pentagon has 6 sides.", "A pentagon must have 4 right angles."]
+  },
+  {
+    id: "hexagon",
+    name: "Hexagon",
+    minLevel: 2,
+    definition: "A polygon with exactly 6 sides and 6 corners.",
+    properties: ["6 sides", "6 corners", "polygon"],
+    trueFacts: ["Every hexagon has 6 sides.", "A hexagon has more sides than a pentagon."],
+    falseFacts: ["A hexagon has 5 sides.", "A hexagon is a circle."]
+  },
+  {
+    id: "parallelogram",
+    name: "Parallelogram",
+    minLevel: 3,
+    definition: "A quadrilateral with 2 pairs of parallel sides.",
+    properties: ["4 sides", "2 pairs of parallel sides", "opposite sides equal"],
+    trueFacts: ["A rectangle is a special parallelogram.", "A rhombus is a special parallelogram."],
+    falseFacts: ["Every parallelogram is a square.", "A parallelogram has no parallel sides."]
+  },
+  {
+    id: "trapezoid",
+    name: "Trapezoid",
+    minLevel: 3,
+    definition: "A quadrilateral with at least 1 pair of parallel sides.",
+    properties: ["4 sides", "at least 1 pair of parallel sides", "quadrilateral"],
+    trueFacts: ["A trapezoid is a quadrilateral.", "A trapezoid has a pair of parallel sides."],
+    falseFacts: ["A trapezoid has 3 sides.", "A trapezoid must have 4 equal sides."]
+  },
+  {
+    id: "right-triangle",
+    name: "Right triangle",
+    minLevel: 3,
+    definition: "A triangle with one right angle.",
+    properties: ["3 sides", "3 corners", "1 right angle", "triangle"],
+    trueFacts: ["A right triangle is still a triangle.", "A right triangle has one right angle."],
+    falseFacts: ["Every triangle is a right triangle.", "A right triangle has 4 sides."]
+  }
+];
+
+const geometryRelationshipFacts = [
+  { minLevel: 1, text: "Every square is a rectangle.", answer: true },
+  { minLevel: 1, text: "Every rectangle is a square.", answer: false },
+  { minLevel: 2, text: "Every square is a rhombus.", answer: true },
+  { minLevel: 2, text: "Every rectangle is a rhombus.", answer: false },
+  { minLevel: 2, text: "A rhombus must have 4 equal sides.", answer: true },
+  { minLevel: 3, text: "A rectangle is a parallelogram.", answer: true },
+  { minLevel: 3, text: "A rhombus is a parallelogram.", answer: true },
+  { minLevel: 3, text: "Every parallelogram is a square.", answer: false },
+  { minLevel: 3, text: "A quadrilateral always has 4 sides.", answer: true },
+  { minLevel: 4, text: "A square is both a rectangle and a rhombus.", answer: true },
+  { minLevel: 4, text: "If a 4-sided shape has 4 right angles, it is a rectangle.", answer: true }
+];
+
+function availableGeometryShapes() {
+  return geometryShapes.filter((shape) => shape.minLevel <= difficultyLevel());
+}
+
+function makeGeometryProblem() {
+  const shapes = availableGeometryShapes();
+  const shape = shapes[randomInt(0, shapes.length - 1)];
+  const useRelationship = difficultyLevel() >= 2 && Math.random() < 0.35;
+  if (useRelationship) {
+    const facts = geometryRelationshipFacts.filter((fact) => fact.minLevel <= difficultyLevel());
+    const fact = facts[randomInt(0, facts.length - 1)];
+    return {
+      type: "relationship",
+      shape,
+      question: "Is this statement true?",
+      statement: fact.text,
+      answer: fact.answer ? "True" : "False",
+      choices: ["True", "False"],
+      explanation: fact.answer ? "Yes. That statement follows the shape definitions." : "Not quite. One example can break an always-statement."
+    };
+  }
+
+  const askName = Math.random() < 0.45;
+  if (askName) {
+    return {
+      type: "name",
+      shape,
+      question: "What shape is this?",
+      answer: shape.name,
+      choices: makeGeometryChoices(shape.name, shapes.map((item) => item.name)),
+      explanation: shape.definition
+    };
+  }
+
+  const trueFact = shape.trueFacts[randomInt(0, shape.trueFacts.length - 1)];
+  const falseFacts = shape.falseFacts.slice().sort(() => Math.random() - 0.5).slice(0, 3);
+  return {
+    type: "property",
+    shape,
+    question: `Which fact is true about a ${shape.name.toLowerCase()}?`,
+    answer: trueFact,
+    choices: [trueFact, ...falseFacts].sort(() => Math.random() - 0.5),
+    explanation: shape.definition
+  };
+}
+
+function makeGeometryChoices(answer, options) {
+  const choices = new Set([answer]);
+  while (choices.size < 4 && choices.size < options.length) {
+    choices.add(options[randomInt(0, options.length - 1)]);
+  }
+  return Array.from(choices).sort(() => Math.random() - 0.5);
+}
+
+function renderShapeShop(problem = makeGeometryProblem(), message = "Look at the shape, then use its properties.") {
   activityPanel.innerHTML = `
-    ${progressPill('<span class="target-pill">4 placed shapes = 1 spark</span>')}
+    ${progressPill('<span class="target-pill">Correct detective work = 1 spark</span>')}
     <p class="prompt">${message}</p>
-    <div class="shape-board">
-      <div class="shape-canvas" id="shapeCanvas" aria-label="Shape canvas"></div>
-      <div class="shape-bank">
-        ${["square", "triangle", "rectangle", "circle"]
-          .map(
-            (shape) => `
-              <button class="shape-piece ${shape === state.currentShape ? "active" : ""}" type="button" data-shape="${shape}">
-                <span class="shape ${shape}" aria-hidden="true"></span>
-                <span class="sr-only">${shape}</span>
-              </button>
-            `
-          )
-          .join("")}
-        <button class="primary-button" type="button" id="shapeChallenge">Challenge</button>
-        <button class="secondary-button" type="button" id="clearShapes">Clear</button>
+    <div class="geometry-layout">
+      <div class="geometry-card">
+        <div class="geometry-visual" aria-label="${problem.shape.name}">
+          ${shapeSvg(problem.shape.id)}
+        </div>
+        <div>
+          <h3>${problem.shape.name}</h3>
+          <p>${problem.shape.definition}</p>
+        </div>
+        <div class="property-list">
+          ${problem.shape.properties.map((property) => `<span>${property}</span>`).join("")}
+        </div>
+      </div>
+      <div class="fact-panel">
+        <div class="fact-card">
+          <span>${problem.type === "relationship" ? "Shape relationship" : "Shape question"}</span>
+          <strong>${problem.statement || problem.question}</strong>
+        </div>
+        ${problem.statement ? `<p class="prompt">${problem.question}</p>` : ""}
+        <div class="choice-grid">
+          ${problem.choices
+            .map((choice) => `<button class="choice-button geometry-choice" type="button" data-choice="${choice}">${choice}</button>`)
+            .join("")}
+        </div>
       </div>
     </div>
   `;
 
-  const canvas = activityPanel.querySelector("#shapeCanvas");
-  drawPlacedShapes(canvas, state.placedShapes);
-
-  activityPanel.querySelectorAll("[data-shape]").forEach((button) => {
+  activityPanel.querySelectorAll("[data-choice]").forEach((button) => {
     button.addEventListener("click", () => {
-      state.currentShape = button.dataset.shape;
-      renderShapeShop(`Current shape: ${state.currentShape}. Place it on the board.`);
+      const success = button.dataset.choice === problem.answer;
+      button.classList.add(success ? "correct" : "wrong");
+      completeRound({ sparks: success ? 1 : 0 });
+      delayedGameRender("shape-shop", () => {
+        renderShapeShop(
+          success ? makeGeometryProblem() : problem,
+          success ? `${problem.explanation} Spark earned.` : `${problem.explanation} Try again.`
+        );
+      });
     });
-  });
-
-  canvas.addEventListener("click", (event) => {
-    const rect = canvas.getBoundingClientRect();
-    state.placedShapes.push({
-      shape: state.currentShape,
-      x: event.clientX - rect.left,
-      y: event.clientY - rect.top,
-      turn: Math.floor(Math.random() * 5) * 12
-    });
-    drawPlacedShapes(canvas, state.placedShapes);
-    completeRound({ sparks: state.placedShapes.length % 4 === 0 ? 1 : 0 });
-  });
-
-  activityPanel.querySelector("#shapeChallenge").addEventListener("click", () => {
-    const ideas = [
-      "Make a house using one triangle and one rectangle.",
-      "Make a robot using at least three rectangles.",
-      "Make a creature with only circles and triangles.",
-      "Make a pattern that repeats: square, circle, square, circle."
-    ];
-    renderShapeShop(ideas[Math.floor(Math.random() * ideas.length)]);
-  });
-
-  activityPanel.querySelector("#clearShapes").addEventListener("click", () => {
-    state.placedShapes = [];
-    renderShapeShop();
   });
 }
 
-function drawPlacedShapes(canvas, shapes) {
-  canvas.innerHTML = shapes
-    .map(
-      (item) => `
-        <span class="placed-shape" style="left:${item.x - 43}px; top:${item.y - 43}px; --turn:${item.turn}deg">
-          <span class="shape ${item.shape}" aria-hidden="true"></span>
-        </span>
-      `
-    )
-    .join("");
+function shapeSvg(id) {
+  const common = 'viewBox="0 0 180 150" role="img"';
+  const styles = 'fill="#dff7f0" stroke="#18212f" stroke-width="7" stroke-linejoin="round"';
+  const line = 'stroke="#d94b4b" stroke-width="5" stroke-linecap="round"';
+  const svgs = {
+    circle: `<svg ${common}><circle cx="90" cy="75" r="48" ${styles}/></svg>`,
+    triangle: `<svg ${common}><polygon points="90,20 150,125 30,125" ${styles}/></svg>`,
+    square: `<svg ${common}><rect x="45" y="30" width="90" height="90" rx="4" ${styles}/><path d="M45 48 h18 v-18" ${line}/></svg>`,
+    rectangle: `<svg ${common}><rect x="28" y="42" width="124" height="70" rx="4" ${styles}/><path d="M28 60 h18 v-18" ${line}/></svg>`,
+    rhombus: `<svg ${common}><polygon points="90,18 150,75 90,132 30,75" ${styles}/></svg>`,
+    pentagon: `<svg ${common}><polygon points="90,18 150,65 126,130 54,130 30,65" ${styles}/></svg>`,
+    hexagon: `<svg ${common}><polygon points="58,24 122,24 158,75 122,126 58,126 22,75" ${styles}/></svg>`,
+    parallelogram: `<svg ${common}><polygon points="58,38 158,38 122,112 22,112" ${styles}/></svg>`,
+    trapezoid: `<svg ${common}><polygon points="55,38 125,38 158,112 22,112" ${styles}/></svg>`,
+    "right-triangle": `<svg ${common}><polygon points="42,28 42,122 148,122" ${styles}/><path d="M42 101 h21 v21" ${line}/></svg>`
+  };
+  return svgs[id] || svgs.square;
 }
 
 function makeClockProblem() {

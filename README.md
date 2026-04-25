@@ -7,7 +7,7 @@ Open `index.html` in a browser to play. No build step is required.
 ## First Games
 
 - Make Ten Trail: addition pairs and complements
-- Shape Workshop: combining simple shapes into pictures
+- Shape Workshop: definitions, properties, and shape-family relationships
 - Array Builder: multiplication as rows and columns
 - Share Fair: division as equal sharing
 - Fact Family: multiplication and division as related facts
