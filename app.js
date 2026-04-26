@@ -6,6 +6,7 @@ const state = {
   selectedNumbers: [],
   robotProgram: [],
   robotPosition: 20,
+  quantum: null,
   pebble: null,
   boxDuel: null
 };
@@ -106,6 +107,18 @@ const games = [
     mathTalk: "What is changing each time? Is the jump always the same?",
     codeTalk: "Patterns are rules. A loop can repeat the rule again and again.",
     render: renderPatternMachine
+  },
+  {
+    id: "quantum-ttt",
+    title: "Quantum Tic-Tac-Toe",
+    short: "Ghost marks and loops",
+    topic: "Strategy duel",
+    icon: "Q",
+    parent:
+      "First play for the story: each move is linked across two squares. When a loop appears, choose how the board becomes real.",
+    mathTalk: "The ghost marks make a graph. A loop means the choices cannot all stay ghostly, so the loop collapses into definite marks.",
+    codeTalk: "The app stores each ghost move as an edge between two squares, then searches for cycles before triggering collapse.",
+    render: renderQuantumTicTacToe
   },
   {
     id: "pebble-duel",
@@ -948,6 +961,262 @@ function renderPatternMachine(problem = makePatternProblem(), message = "Find th
       });
     });
   });
+}
+
+const winLines = [
+  [0, 1, 2],
+  [3, 4, 5],
+  [6, 7, 8],
+  [0, 3, 6],
+  [1, 4, 7],
+  [2, 5, 8],
+  [0, 4, 8],
+  [2, 4, 6]
+];
+
+function newQuantumGame() {
+  state.quantum = {
+    current: "X",
+    moveNumber: 1,
+    moves: [],
+    resolved: Array(9).fill(null),
+    selected: [],
+    collapse: null,
+    winner: "",
+    recorded: false
+  };
+}
+
+function renderQuantumTicTacToe(message = "Choose two open squares to place a paired ghost mark.") {
+  if (!state.quantum) newQuantumGame();
+  const game = state.quantum;
+  activityPanel.innerHTML = `
+    ${progressPill('<span class="target-pill">Win the quantum duel = 4 sparks</span>')}
+    <p class="prompt">${message}</p>
+    <div class="quantum-layout">
+      <div class="quantum-board-wrap">
+        <div class="quantum-board" aria-label="Quantum tic-tac-toe board">
+          ${Array.from({ length: 9 }, (_, index) => renderQuantumCell(game, index)).join("")}
+        </div>
+      </div>
+      <div class="quantum-side">
+        <div class="turn-card quantum-turn">
+          <span>${game.winner ? "Result" : game.collapse ? "Collapse chooser" : "Turn"}</span>
+          <strong>${game.winner || (game.collapse ? game.collapse.chooser : game.current)}</strong>
+        </div>
+        ${renderQuantumCollapse(game)}
+        <div class="quantum-log">
+          <h3>Entangled Moves</h3>
+          ${game.moves.length ? game.moves.map((move) => renderQuantumMove(move)).join("") : "<p>No ghost marks yet.</p>"}
+        </div>
+        <button class="primary-button" type="button" id="newQuantumGame">New quantum board</button>
+      </div>
+    </div>
+  `;
+
+  activityPanel.querySelectorAll("[data-q-cell]").forEach((button) => {
+    button.addEventListener("click", () => {
+      selectQuantumCell(Number(button.dataset.qCell));
+    });
+  });
+
+  activityPanel.querySelectorAll("[data-collapse-cell]").forEach((button) => {
+    button.addEventListener("click", () => {
+      collapseQuantumLoop(Number(button.dataset.collapseCell));
+    });
+  });
+
+  activityPanel.querySelector("#newQuantumGame").addEventListener("click", () => {
+    newQuantumGame();
+    renderQuantumTicTacToe();
+  });
+}
+
+function renderQuantumCell(game, index) {
+  const resolved = game.resolved[index];
+  const marks = game.moves.filter((move) => !move.resolved && move.cells.includes(index));
+  const selected = game.selected.includes(index);
+  const disabled = Boolean(resolved || game.collapse || game.winner);
+  return `
+    <button class="q-cell ${resolved ? `resolved player-${resolved.player.toLowerCase()}` : ""} ${selected ? "selected" : ""}" type="button" data-q-cell="${index}" ${disabled ? "disabled" : ""}>
+      <span class="q-cell-number">${index + 1}</span>
+      ${
+        resolved
+          ? `<span class="q-real">${resolved.player}</span><span class="q-move-id">${resolved.moveId}</span>`
+          : `<span class="q-ghosts">${marks.map((move) => `<span class="q-chip player-${move.player.toLowerCase()}">${move.player}${move.id}</span>`).join("")}</span>`
+      }
+    </button>
+  `;
+}
+
+function renderQuantumMove(move) {
+  const status = move.resolved ? (move.realCell === null ? "vanished" : `real at ${move.realCell + 1}`) : `${move.cells[0] + 1} <span>↔</span> ${move.cells[1] + 1}`;
+  return `
+    <div class="q-move-row ${move.resolved ? "settled" : ""}">
+      <strong class="player-${move.player.toLowerCase()}">${move.player}${move.id}</strong>
+      <span>${status}</span>
+    </div>
+  `;
+}
+
+function renderQuantumCollapse(game) {
+  if (!game.collapse) {
+    return `
+      <div class="quantum-help">
+        <strong>Rule</strong>
+        <p>A ghost mark lives in two squares. If the links make a loop, someone chooses which square becomes real first.</p>
+      </div>
+    `;
+  }
+  const move = game.moves.find((item) => item.id === game.collapse.moveId);
+  return `
+    <div class="collapse-panel">
+      <h3>Loop Detected</h3>
+      <p>${game.collapse.chooser} chooses where ${move.player}${move.id} becomes real.</p>
+      <div class="choice-grid">
+        ${game.collapse.options.map((cell) => `<button class="choice-button" type="button" data-collapse-cell="${cell}">Square ${cell + 1}</button>`).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function selectQuantumCell(cell) {
+  const game = state.quantum;
+  if (!game || game.winner || game.collapse || game.resolved[cell]) return;
+  if (game.selected.includes(cell)) {
+    game.selected = game.selected.filter((item) => item !== cell);
+    renderQuantumTicTacToe("Pick two different squares for the ghost mark.");
+    return;
+  }
+  game.selected.push(cell);
+  if (game.selected.length < 2) {
+    renderQuantumTicTacToe("Pick the second square for the same ghost mark.");
+    return;
+  }
+  const [first, second] = game.selected;
+  game.selected = [];
+  addQuantumMove(first, second);
+}
+
+function addQuantumMove(first, second) {
+  const game = state.quantum;
+  if (first === second || game.resolved[first] || game.resolved[second]) {
+    renderQuantumTicTacToe("Choose two different open squares.");
+    return;
+  }
+  const makesLoop = hasQuantumPath(game, first, second);
+  const move = {
+    id: game.moveNumber,
+    player: game.current,
+    cells: [first, second],
+    resolved: false,
+    realCell: null
+  };
+  game.moves.push(move);
+
+  if (makesLoop) {
+    game.collapse = {
+      moveId: move.id,
+      chooser: otherQuantumPlayer(game.current),
+      options: move.cells
+    };
+    renderQuantumTicTacToe(`A loop appeared. ${game.collapse.chooser} chooses how it collapses.`);
+    return;
+  }
+
+  game.current = otherQuantumPlayer(game.current);
+  game.moveNumber += 1;
+  if (availableQuantumCells(game).length < 2) {
+    finishQuantumGame("Tie", "No room for another ghost pair. The quantum duel is a tie.");
+    return;
+  }
+  renderQuantumTicTacToe(`${game.current}'s turn. Choose two open squares.`);
+}
+
+function hasQuantumPath(game, start, end) {
+  const visited = new Set([start]);
+  const stack = [start];
+  while (stack.length) {
+    const cell = stack.pop();
+    const neighbors = game.moves
+      .filter((move) => !move.resolved && move.cells.includes(cell))
+      .map((move) => (move.cells[0] === cell ? move.cells[1] : move.cells[0]));
+    for (const neighbor of neighbors) {
+      if (neighbor === end) return true;
+      if (!visited.has(neighbor)) {
+        visited.add(neighbor);
+        stack.push(neighbor);
+      }
+    }
+  }
+  return false;
+}
+
+function collapseQuantumLoop(cell) {
+  const game = state.quantum;
+  if (!game || !game.collapse) return;
+  const move = game.moves.find((item) => item.id === game.collapse.moveId);
+  if (!move || !move.cells.includes(cell)) return;
+  resolveQuantumMove(game, move.id, cell);
+  game.collapse = null;
+  const result = quantumWinner(game);
+  if (result) {
+    finishQuantumGame(result, result === "Tie" ? "Both players made a line in the same collapse." : `${result} made a real tic-tac-toe line.`);
+    return;
+  }
+  game.current = otherQuantumPlayer(game.current);
+  game.moveNumber += 1;
+  if (availableQuantumCells(game).length < 2) {
+    finishQuantumGame("Tie", "No room for another ghost pair. The quantum duel is a tie.");
+    return;
+  }
+  renderQuantumTicTacToe(`Collapse complete. ${game.current}'s turn.`);
+}
+
+function resolveQuantumMove(game, moveId, cell) {
+  const move = game.moves.find((item) => item.id === moveId);
+  if (!move || move.resolved) return;
+  if (game.resolved[cell]) {
+    move.resolved = true;
+    move.realCell = null;
+    return;
+  }
+  game.resolved[cell] = { player: move.player, moveId: move.id };
+  move.resolved = true;
+  move.realCell = cell;
+  const knockedMoves = game.moves.filter((item) => !item.resolved && item.cells.includes(cell));
+  knockedMoves.forEach((item) => {
+    const twin = item.cells[0] === cell ? item.cells[1] : item.cells[0];
+    resolveQuantumMove(game, item.id, twin);
+  });
+}
+
+function quantumWinner(game) {
+  const winners = new Set();
+  winLines.forEach((line) => {
+    const players = line.map((cell) => game.resolved[cell]?.player);
+    if (players[0] && players.every((player) => player === players[0])) winners.add(players[0]);
+  });
+  if (winners.size > 1) return "Tie";
+  return Array.from(winners)[0] || "";
+}
+
+function finishQuantumGame(result, message) {
+  const game = state.quantum;
+  game.winner = result;
+  if (!game.recorded) {
+    completeRound(result === "Tie" ? { sparks: 1 } : { sparks: 4, win: true });
+    game.recorded = true;
+  }
+  renderQuantumTicTacToe(message);
+}
+
+function availableQuantumCells(game) {
+  return game.resolved.map((mark, index) => (mark ? null : index)).filter((cell) => cell !== null);
+}
+
+function otherQuantumPlayer(player) {
+  return player === "X" ? "O" : "X";
 }
 
 function newPebbleGame() {

@@ -14,6 +14,7 @@ Open `index.html` in a browser to play. No build step is required.
 - Clock Quest: reading analog time
 - Robot Path: Scratch-like command sequencing
 - Pattern Machine: finding and extending number rules
+- Quantum Tic-Tac-Toe: two-player ghost marks, loops, and collapse
 - Pebble Duel: a two-player take-away strategy game
 - Box Capture: a two-player square-claiming strategy game
 
