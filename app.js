@@ -7,6 +7,7 @@ const state = {
   robotProgram: [],
   robotPosition: 20,
   quantum: null,
+  ultimate: null,
   pebble: null,
   boxDuel: null
 };
@@ -119,6 +120,18 @@ const games = [
     mathTalk: "The ghost marks make a graph. A loop means the choices cannot all stay ghostly, so the loop collapses into definite marks.",
     codeTalk: "The app stores each ghost move as an edge between two squares, then searches for cycles before triggering collapse.",
     render: renderQuantumTicTacToe
+  },
+  {
+    id: "ultimate-ttt",
+    title: "Ultimate Tic-Tac-Toe",
+    short: "Boards inside boards",
+    topic: "Strategy duel",
+    icon: "UT",
+    parent:
+      "Ask Aiden to say where his move sends the other player. The little square number controls the next little board.",
+    mathTalk: "This game uses position and structure: each small move affects the next board, and small-board wins build a big-board win.",
+    codeTalk: "The app tracks 9 small games and one big game. Each move updates a local board, then chooses the next active board.",
+    render: renderUltimateTicTacToe
   },
   {
     id: "pebble-duel",
@@ -996,6 +1009,7 @@ function renderQuantumTicTacToe(message = "Choose two open squares to place a pa
     <div class="quantum-layout">
       <div class="quantum-board-wrap">
         <div class="quantum-board" aria-label="Quantum tic-tac-toe board">
+          ${renderQuantumLinks(game)}
           ${Array.from({ length: 9 }, (_, index) => renderQuantumCell(game, index)).join("")}
         </div>
       </div>
@@ -1030,6 +1044,34 @@ function renderQuantumTicTacToe(message = "Choose two open squares to place a pa
     newQuantumGame();
     renderQuantumTicTacToe();
   });
+}
+
+function renderQuantumLinks(game) {
+  const liveMoves = game.moves.filter((move) => !move.resolved);
+  if (!liveMoves.length) return "";
+  return `
+    <svg class="q-links" viewBox="0 0 100 100" aria-hidden="true">
+      ${liveMoves
+        .map((move) => {
+          const first = quantumCellCenter(move.cells[0]);
+          const second = quantumCellCenter(move.cells[1]);
+          return `
+            <line class="q-link-glow player-${move.player.toLowerCase()}" x1="${first.x}" y1="${first.y}" x2="${second.x}" y2="${second.y}"></line>
+            <line class="q-link player-${move.player.toLowerCase()}" x1="${first.x}" y1="${first.y}" x2="${second.x}" y2="${second.y}"></line>
+          `;
+        })
+        .join("")}
+    </svg>
+  `;
+}
+
+function quantumCellCenter(index) {
+  const col = index % 3;
+  const row = Math.floor(index / 3);
+  return {
+    x: (col + 0.5) * (100 / 3),
+    y: (row + 0.5) * (100 / 3)
+  };
 }
 
 function renderQuantumCell(game, index) {
@@ -1217,6 +1259,132 @@ function availableQuantumCells(game) {
 
 function otherQuantumPlayer(player) {
   return player === "X" ? "O" : "X";
+}
+
+function newUltimateGame() {
+  state.ultimate = {
+    current: "X",
+    boards: Array.from({ length: 9 }, () => Array(9).fill("")),
+    boardWinners: Array(9).fill(""),
+    activeBoard: null,
+    winner: "",
+    recorded: false
+  };
+}
+
+function renderUltimateTicTacToe(message = "Play anywhere. Your square sends the next player to that small board.") {
+  if (!state.ultimate) newUltimateGame();
+  const game = state.ultimate;
+  activityPanel.innerHTML = `
+    ${progressPill('<span class="target-pill">Win the ultimate board = 4 sparks</span>')}
+    <p class="prompt">${message}</p>
+    <div class="ultimate-layout">
+      <div class="ultimate-board" aria-label="Ultimate tic-tac-toe board">
+        ${game.boards.map((board, boardIndex) => renderUltimateSmallBoard(game, board, boardIndex)).join("")}
+      </div>
+      <div class="ultimate-side">
+        <div class="turn-card">
+          <span>${game.winner ? "Result" : "Turn"}</span>
+          <strong>${game.winner || game.current}</strong>
+        </div>
+        <div class="ultimate-rule">
+          <strong>Next Board</strong>
+          <p>${ultimateTargetText(game)}</p>
+        </div>
+        <div class="ultimate-mini-map">
+          ${game.boardWinners
+            .map((winner, index) => `<span class="${winner ? `claimed player-${winner.toLowerCase()}` : game.activeBoard === index ? "active" : ""}">${winner || index + 1}</span>`)
+            .join("")}
+        </div>
+        <button class="primary-button" type="button" id="newUltimateGame">New ultimate board</button>
+      </div>
+    </div>
+  `;
+
+  activityPanel.querySelectorAll("[data-u-board]").forEach((button) => {
+    button.addEventListener("click", () => {
+      playUltimateMove(Number(button.dataset.uBoard), Number(button.dataset.uCell));
+    });
+  });
+
+  activityPanel.querySelector("#newUltimateGame").addEventListener("click", () => {
+    newUltimateGame();
+    renderUltimateTicTacToe();
+  });
+}
+
+function renderUltimateSmallBoard(game, board, boardIndex) {
+  const winner = game.boardWinners[boardIndex];
+  const active = !game.winner && !winner && (game.activeBoard === null || game.activeBoard === boardIndex);
+  return `
+    <div class="u-small-board ${active ? "active" : ""} ${winner ? `won player-${winner.toLowerCase()}` : ""}">
+      <span class="u-board-number">${boardIndex + 1}</span>
+      ${winner ? `<span class="u-board-winner">${winner === "Tie" ? "T" : winner}</span>` : ""}
+      ${board
+        .map(
+          (mark, cellIndex) => `
+            <button class="u-cell ${mark ? `marked player-${mark.toLowerCase()}` : ""}" type="button" data-u-board="${boardIndex}" data-u-cell="${cellIndex}" ${
+              !active || mark ? "disabled" : ""
+            }>
+              ${mark || `<span>${cellIndex + 1}</span>`}
+            </button>
+          `
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function playUltimateMove(boardIndex, cellIndex) {
+  const game = state.ultimate;
+  if (!game || game.winner) return;
+  if (game.activeBoard !== null && game.activeBoard !== boardIndex) return;
+  if (game.boardWinners[boardIndex] || game.boards[boardIndex][cellIndex]) return;
+
+  game.boards[boardIndex][cellIndex] = game.current;
+  const localWinner = lineWinner(game.boards[boardIndex]);
+  if (localWinner) game.boardWinners[boardIndex] = localWinner;
+  else if (game.boards[boardIndex].every(Boolean)) game.boardWinners[boardIndex] = "Tie";
+
+  const globalWinner = lineWinner(game.boardWinners);
+  if (globalWinner) {
+    finishUltimateGame(globalWinner, `${globalWinner} won the big board.`);
+    return;
+  }
+  if (game.boardWinners.every(Boolean)) {
+    finishUltimateGame("Tie", "Every small board is finished. The ultimate board is a tie.");
+    return;
+  }
+
+  game.activeBoard = game.boardWinners[cellIndex] ? null : cellIndex;
+  game.current = otherQuantumPlayer(game.current);
+  renderUltimateTicTacToe(`${game.current}'s turn. ${ultimateTargetText(game)}`);
+}
+
+function lineWinner(cells) {
+  for (const line of winLines) {
+    const [a, b, c] = line;
+    if (cells[a] && cells[a] !== "Tie" && cells[a] === cells[b] && cells[a] === cells[c]) {
+      return cells[a];
+    }
+  }
+  return "";
+}
+
+function ultimateTargetText(game) {
+  if (game.winner) return "The game is finished.";
+  if (game.activeBoard === null) return "Any unfinished small board is open.";
+  return `Play in small board ${game.activeBoard + 1}.`;
+}
+
+function finishUltimateGame(result, message) {
+  const game = state.ultimate;
+  game.winner = result;
+  if (!game.recorded) {
+    completeRound(result === "Tie" ? { sparks: 1 } : { sparks: 4, win: true });
+    game.recorded = true;
+  }
+  renderUltimateTicTacToe(message);
 }
 
 function newPebbleGame() {
